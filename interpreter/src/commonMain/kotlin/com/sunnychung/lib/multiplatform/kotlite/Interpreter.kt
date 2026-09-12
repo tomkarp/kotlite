@@ -608,7 +608,27 @@ open class Interpreter(val rootNode: ASTNode, val executionEnvironment: Executio
                             }
                     }
                     CallableType.ExtensionFunction -> {
+                        // A long-lived host session may analyze several scripts
+                        // against the same execution environment. The analyzer
+                        // refreshes generated names for builtin extensions on
+                        // every pass, while the call stack still contains the
+                        // previously registered names. Resolve by the declared
+                        // receiver/name as a safe fallback; this preserves the
+                        // analyzed function node and fixes incremental calls
+                        // such as list[0], count(), and add().
+                        val runtimeSubject = subject as RuntimeValue
+                        val receiverTypes = buildList {
+                            add(runtimeSubject.type().toTypeNode())
+                            (runtimeSubject.type() as? ObjectType)?.superTypes?.forEach { add(it.toTypeNode()) }
+                        }
                         val function = callStack.currentSymbolTable().findExtensionFunction(functionRefName!!)
+                            ?: receiverTypes.asSequence()
+                                .flatMap { receiverType ->
+                                    callStack.currentSymbolTable()
+                                        .findExtensionFunctionsByDeclaredName(receiverType, this.function.member.name)
+                                        .asSequence()
+                                }
+                                .firstOrNull()
                             ?: throw RuntimeException("Analysed function $functionRefName not found")
                         if (subject === NullValue
                             && !function.receiver!!.resolveGenericParameterTypeToUpperBound(function.extraTypeParameters + function.typeParameters, isResolveRootOnly = true).isNullable
