@@ -1687,6 +1687,7 @@ open class Parser(protected val lexer: Lexer) {
         when (it) {
             "open" -> PropertyModifier.open
             "override" -> PropertyModifier.override
+            "private" -> PropertyModifier.private
             else -> throw ParseException("Modifier `$it` cannot be applied to properties")
         }
     }.toSet()
@@ -2083,6 +2084,7 @@ open class Parser(protected val lexer: Lexer) {
             "vararg" -> /*FunctionValueParameterModifier.vararg*/ throw UnsupportedOperationException("vararg in class primary constructor is not supported")
             "open" -> PropertyModifier.open
             "override" -> PropertyModifier.override
+            "private" -> PropertyModifier.private
             else -> throw ParseException("Modifier `$it` cannot be applied to class parameter")
         }
     }

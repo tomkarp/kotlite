@@ -359,6 +359,15 @@ open class SemanticAnalyzer(val rootNode: ASTNode, val executionEnvironment: Exe
         return scope.scopeLevel
     }
 
+    fun currentClassName(): String? {
+        var scope: SymbolTable? = currentScope
+        while (scope != null) {
+            if (scope.scopeType == ScopeType.Class) return scope.scopeName
+            scope = scope.parentScope
+        }
+        return null
+    }
+
     fun checkPropertyReadAccessAndGetScopeLevelAndTransformedName(accessNode: ASTNode, name: String): Pair<Int, String> {
         if (!currentScope.hasProperty(name)) {
             throw SemanticException(accessNode.position, "Property `$name` is not declared")
@@ -1751,6 +1760,9 @@ open class SemanticAnalyzer(val rootNode: ASTNode, val executionEnvironment: Exe
                 .first
             if (lookupType == IdentifierClassifier.Property) {
                 clazz.findMemberPropertyWithoutAccessor(memberName)?.let { property ->
+                    if (clazz.isPrivateMemberProperty(memberName) && currentClassName() != clazz.findMemberPropertyOwnerName(memberName)) {
+                        throw SemanticException(position, "Private property `$memberName` cannot be accessed here")
+                    }
                     if (isCheckWriteAccess && !property.isMutable) {
                         throw SemanticException(position, "val `$memberName` cannot be reassigned")
                     }
@@ -1758,6 +1770,9 @@ open class SemanticAnalyzer(val rootNode: ASTNode, val executionEnvironment: Exe
                     return subjectType
                 }
                 clazz.findMemberPropertyCustomAccessor(memberName)?.let { accessor ->
+                    if (clazz.isPrivateMemberProperty(memberName) && currentClassName() != clazz.findMemberPropertyOwnerName(memberName)) {
+                        throw SemanticException(position, "Private property `$memberName` cannot be accessed here")
+                    }
                     if (isCheckWriteAccess) {
                         if (accessor.setter == null) {
                             throw SemanticException(position, "Setter for `$memberName` is not declared")
