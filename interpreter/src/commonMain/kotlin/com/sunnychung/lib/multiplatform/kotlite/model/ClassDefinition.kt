@@ -535,7 +535,9 @@ open class ClassDefinition(
             Unit.takeIf { !inThisClassOnly }?.let { superClass?.findMemberPropertyTransformedName(declaredName, inThisClassOnly) }
 
     fun findMemberPropertyDeclaredName(transformedName: String, inThisClassOnly: Boolean = false): String? =
-        memberTransformedNameToPropertyName[transformedName] ?:
+        memberTransformedNameToPropertyName[transformedName]
+            ?: transformedName.takeIf { memberPropertyTypes.containsKey(it) }
+            ?: transformedName.substringBeforeLast('/').takeIf { memberPropertyTypes.containsKey(it) } ?:
             Unit.takeIf { !inThisClassOnly }?.let { superClass?.findMemberPropertyDeclaredName(transformedName, inThisClassOnly) }
 
     /**
